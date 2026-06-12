@@ -1,6 +1,6 @@
 {
   "name": "@antonior/claude-code-setup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Install Antonio's Claude Code config: hooks, skills, statusline, and settings",
   "bin": {
     "claude-code-setup": "bin/install.js"
