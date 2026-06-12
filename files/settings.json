@@ -1,0 +1,149 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn:*)",
+      "Bash(pod:*)",
+      "Bash(xcrun:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(jest:*)",
+      "Bash(tsc:*)",
+      "Bash(adb:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote -v)",
+      "Bash(git stash list:*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(which:*)",
+      "Bash(file:*)",
+      "Bash(jq:*)",
+      "Bash(sw_vers:*)",
+      "Bash(date)",
+      "Bash(npm view:*)",
+      "Bash(npm ls:*)"
+    ]
+  },
+  "model": "sonnet",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/caveman-activate.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/scan-secrets.sh",
+            "if": "Bash(git commit*)",
+            "timeout": 15,
+            "statusMessage": "Scanning staged changes for secrets"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/check-dep.sh",
+            "if": "Bash(yarn add*)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/check-dep.sh",
+            "if": "Bash(npm install *)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/check-dep.sh",
+            "if": "Bash(npm i *)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/check-dep.sh",
+            "if": "Bash(npm add*)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/check-dep.sh",
+            "if": "Bash(pnpm add*)",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/eslint-fix.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify-sound.sh /System/Library/Sounds/Ping.aiff",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/notify-sound.sh /System/Library/Sounds/Glass.aiff",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/stop-verify.sh",
+            "timeout": 180,
+            "statusMessage": "Verifying changed files (lint + types)",
+            "async": true,
+            "asyncRewake": true,
+            "rewakeSummary": "Verification failed"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
+  "effortLevel": "xhigh",
+  "theme": "dark-ansi",
+  "autoCompactEnabled": true,
+  "advisorModel": "opus"
+}

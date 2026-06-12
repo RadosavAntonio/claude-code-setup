@@ -1,0 +1,24 @@
+{
+  "name": "@antonior/claude-code-setup",
+  "version": "1.0.0",
+  "description": "Install Antonio's Claude Code config: hooks, skills, statusline, and settings",
+  "bin": {
+    "claude-code-setup": "bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "files/"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "anthropic",
+    "config",
+    "setup"
+  ],
+  "author": "Antonio Radosav <antonio.radosav@protonmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
