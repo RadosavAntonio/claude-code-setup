@@ -2,9 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@antonior/claude-code-setup?color=cb3837&logo=npm)](https://www.npmjs.com/package/@antonior/claude-code-setup)
 [![license](https://img.shields.io/npm/l/@antonior/claude-code-setup?color=blue)](./LICENSE)
-[![macOS](https://img.shields.io/badge/macOS-supported-success?logo=apple&logoColor=white)](#platforms)
-[![Linux](https://img.shields.io/badge/Linux-supported-success?logo=linux&logoColor=white)](#platforms)
-[![Windows](https://img.shields.io/badge/Windows-supported-success?logo=windows&logoColor=white)](#platforms)
+[![platform](https://img.shields.io/badge/platform-macOS-black?logo=apple&logoColor=white)](#platforms)
 [![tokens](https://img.shields.io/badge/optimised%20for-low%20token%20usage-brightgreen)](#optimised-for-low-token-usage)
 
 One-command installer for my [Claude Code](https://claude.com/claude-code) configuration — hooks, slash commands, skills, statusline, and global rules. Install once, get the exact setup I use every day. **Optimised for low token usage.**
@@ -32,7 +30,7 @@ That's it. The installer is idempotent — safe to re-run to pull updates.
 
 ## Platforms
 
-Works on **macOS, Linux, and Windows**. The config, hooks, slash commands, skills, MCP servers, and global rules run across all three. A couple of cosmetic niceties (notification sound, the statusline clock) are tuned for macOS and simply stay quiet elsewhere — nothing blocks the install or the core behaviour.
+Built and tested on **macOS**. Linux and native Windows aren't officially supported yet — the hooks are bash and the installer uses Homebrew, so a full cross-platform pass is needed before I'd claim them.
 
 ## Dependencies (auto-installed via Homebrew)
 
