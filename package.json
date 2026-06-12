@@ -18,6 +18,14 @@
   ],
   "author": "Antonio Radosav <antonio.radosav@protonmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RadosavAntonio/claude-code-setup.git"
+  },
+  "homepage": "https://github.com/RadosavAntonio/claude-code-setup#readme",
+  "bugs": {
+    "url": "https://github.com/RadosavAntonio/claude-code-setup/issues"
+  },
   "engines": {
     "node": ">=18"
   }
