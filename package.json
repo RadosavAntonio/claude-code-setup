@@ -1,7 +1,7 @@
 {
   "name": "@antonior/claude-code-setup",
   "version": "1.0.1",
-  "description": "Install Antonio's Claude Code config: hooks, skills, statusline, and settings",
+  "description": "Install Antonio's full Claude Code setup: hooks, slash commands, skills, statusline, settings, and MCP servers (transcript-search + video-vision)",
   "bin": {
     "claude-code-setup": "bin/install.js"
   },
@@ -14,7 +14,10 @@
     "claude-code",
     "anthropic",
     "config",
-    "setup"
+    "setup",
+    "mcp",
+    "hooks",
+    "dotfiles"
   ],
   "author": "Antonio Radosav <antonio.radosav@protonmail.com>",
   "license": "MIT",

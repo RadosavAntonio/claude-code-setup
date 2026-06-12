@@ -18,13 +18,16 @@ That's it. The installer is idempotent — safe to re-run to pull updates.
 
 **macOS only.** The hooks and statusline use macOS-native tools (`afplay` for sound, BSD `date -r`, Homebrew for `jq`). On Linux/Windows the installer runs but the sound and statusline-clock features won't work.
 
-## Prerequisites
+## Dependencies (auto-installed via Homebrew)
 
-| Tool | Required? | Notes |
-|------|-----------|-------|
-| `jq` | **Yes** | Hooks parse JSON with it. Auto-installed via Homebrew if missing. |
-| `git` | Optional | Commit-scan and verify hooks no-op outside a git repo. |
-| `eslint` / `tsc` | Optional | Auto-fix and verify hooks no-op if not in `node_modules`. |
+The installer installs these for you if missing:
+
+| Tool | For | Notes |
+|------|-----|-------|
+| `jq` | hooks (JSON parsing) | **Required** — install aborts without it. |
+| `python3` | `transcript-search` MCP + video-FPS hook | Best-effort — feature stays dormant if it can't install. |
+| `ffmpeg` | `claude-video-vision` MCP | Best-effort. |
+| `git`, `eslint`, `tsc` | commit-scan / lint / typecheck hooks | Optional — hooks no-op cleanly when absent. |
 
 ## What it installs (into `~/.claude/`)
 
@@ -38,24 +41,28 @@ That's it. The installer is idempotent — safe to re-run to pull updates.
   - `stop-verify.sh` — lint + typecheck changed files when a turn ends
   - `notify-sound.sh` — sound on notification/stop
 - **`commands/`** — `/check-dep`, `/debug`, `/scan-secrets` slash commands
-- **`skills/`** — `/mute`, `/unmute`
+- **`skills/`** — `/mute`, `/unmute`, and `/caveman` (with intensity levels)
 - **`statusline.sh`** — git, model, context %, rate-limit statusline
+- **`transcript-search/rag_lite.py`** — the transcript-search MCP engine
+- **MCP servers** (registered via `claude mcp add-json`, user scope) — see below
 
-## Optional MCP servers
+## Bundled MCP servers
 
-`CLAUDE.md` references two MCP servers that are **not bundled** (they need their own setup). Without them, the related instructions simply don't fire:
+Both are installed and auto-registered for you:
 
-- **`transcript-search`** — powers the "past conversations are indexed" behaviour
-- **`claude-video-vision`** — video analysis
+- **`transcript-search`** — full-text search over your *own* past Claude Code transcripts ("we talked about…", "like last time"). Pure-Python, stdlib only. The index is built **locally on your machine** from `~/.claude/projects/` on first run — nothing about your conversations is ever shipped in this package.
+- **`claude-video-vision`** — lets Claude watch/analyse videos (frames via `ffmpeg`). Published as [`claude-video-vision`](https://www.npmjs.com/package/claude-video-vision) on npm; run via `npx`.
 
-Install these separately if you want the full experience.
+## On a new machine — two one-time steps
 
-## Notes on the shared config
+The installer reproduces **100% of the configuration and behaviour**. Two things are *identity and secrets*, not config, and can never live in a public package — you set them once:
 
-Two items from my personal setup are intentionally **stripped** from the published version:
+1. **Log into Claude Code** (your account — you'd do this on any new machine anyway).
+2. **Give `claude-video-vision` your own API key** if you use video analysis.
 
-- `skipDangerousModePermissionPrompt` — I won't disable a safety prompt on your machine.
-- The video-FPS `UserPromptSubmit` hook — it depends on `python3` and an unbundled MCP server.
+## Intentionally not shipped
+
+- `skipDangerousModePermissionPrompt` — this disables a safety confirmation. I won't flip that on your machine by default; enable it yourself if you want it.
 
 ## License
 

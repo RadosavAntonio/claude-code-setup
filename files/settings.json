@@ -32,7 +32,10 @@
       "Bash(sw_vers:*)",
       "Bash(date)",
       "Bash(npm view:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(claude update *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k: d.get\\(k\\) for k in ['dependencies','devDependencies']}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('mcpServers', {}\\), indent=2\\)\\)\")"
     ]
   },
   "model": "sonnet",
@@ -112,6 +115,17 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/notify-sound.sh /System/Library/Sounds/Ping.aiff",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport json, sys, re\ndata = json.load(sys.stdin)\nmsg = data.get('message', '')\nis_video = (bool(re.search(r'(?i)(analys[ei]|watch|summariz|process|review|transcript)', msg)) and bool(re.search(r'(?i)(\\\\.(mp4|mov|avi|mkv|webm)|youtube\\\\.com|youtu\\\\.be|video)', msg))) or bool(re.search(r'https?://(www\\\\.)?(youtube\\\\.com/watch|youtu\\\\.be/)', msg))\nhas_fps = bool(re.search(r'(?i)(\\\\bfps\\\\b|\\\\d+\\\\s*fps|frame.{0,2}rate|frames.{0,3}per.{0,3}second)', msg))\nif is_video and not has_fps:\n    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': 'REMINDER: User wants to analyse a video but has NOT specified FPS. Before calling any video tools, ask them: How many FPS would you like to use? (default: auto)'}}))\n\"",
             "timeout": 5
           }
         ]

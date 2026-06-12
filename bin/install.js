@@ -44,26 +44,77 @@ function makeExecutable(filePath) {
   fs.chmodSync(filePath, '755');
 }
 
-function checkJq() {
-  const r = spawnSync('which', ['jq'], { encoding: 'utf8' });
-  return r.status === 0;
+// Is a command resolvable on PATH? (uses `command -v` via a shell so it sees
+// the same PATH the user's tools do, not just the bare which builtin.)
+function have(cmd) {
+  return spawnSync('bash', ['-lc', `command -v ${cmd}`], { encoding: 'utf8' }).status === 0;
 }
 
-function installJq() {
-  const hasBrew = spawnSync('which', ['brew'], { encoding: 'utf8' }).status === 0;
-  if (!hasBrew) {
-    fail('jq not found and Homebrew not installed.');
-    console.log(c.yellow('  Install jq manually: https://stedolan.github.io/jq/download/'));
+function hasBrew() {
+  return have('brew');
+}
+
+// Install a Homebrew formula. `required:true` → return false on failure so the
+// caller can abort; `required:false` → best-effort, warn and continue (the
+// related feature just stays dormant until the user installs it).
+function brewInstall(pkg, { required = false } = {}) {
+  if (have(pkg)) { ok(`${pkg} present`); return true; }
+  if (!hasBrew()) {
+    const m = `${pkg} not found and Homebrew not installed.`;
+    if (required) { fail(m); console.log(c.yellow(`  Install Homebrew (https://brew.sh) then re-run, or install ${pkg} manually.`)); return false; }
+    warn(`${m} Skipping — install it later for the related feature.`);
     return false;
   }
-  console.log(c.yellow('  Installing jq via Homebrew...'));
-  const r = spawnSync('brew', ['install', 'jq'], { stdio: 'inherit' });
+  console.log(c.yellow(`  Installing ${pkg} via Homebrew...`));
+  const r = spawnSync('brew', ['install', pkg], { stdio: 'inherit' });
   if (r.status !== 0) {
-    fail('brew install jq failed. Install manually.');
+    if (required) { fail(`brew install ${pkg} failed. Install manually.`); return false; }
+    warn(`brew install ${pkg} failed — continuing without it.`);
     return false;
   }
-  ok('jq installed');
+  ok(`${pkg} installed`);
   return true;
+}
+
+// Register the MCP servers via the official `claude` CLI (writes to user scope,
+// the same place they already live). Idempotent: skip any server already
+// registered. SECURITY: env is always {} — never serialize the user's real
+// environment or read ~/.claude.json (it holds the OAuth token).
+function registerMcpServers() {
+  if (!have('claude')) {
+    warn('`claude` CLI not on PATH — skipping MCP registration.');
+    info('  After installing Claude Code, register them manually:');
+    info(`    claude mcp add-json transcript-search '{"type":"stdio","command":"python3","args":["${path.join(CLAUDE_DIR, 'transcript-search', 'rag_lite.py')}","serve"],"env":{}}' --scope user`);
+    info("    claude mcp add claude-video-vision --scope user -- npx claude-video-vision");
+    return;
+  }
+  const existing = spawnSync('bash', ['-lc', 'claude mcp list'], { encoding: 'utf8', timeout: 60000 }).stdout || '';
+  const servers = [
+    {
+      name: 'transcript-search',
+      json: JSON.stringify({
+        type: 'stdio',
+        command: 'python3',
+        args: [path.join(CLAUDE_DIR, 'transcript-search', 'rag_lite.py'), 'serve'],
+        env: {},
+      }),
+    },
+    {
+      name: 'claude-video-vision',
+      json: JSON.stringify({
+        type: 'stdio',
+        command: 'npx',
+        args: ['claude-video-vision'],
+        env: {},
+      }),
+    },
+  ];
+  for (const s of servers) {
+    if (existing.includes(s.name)) { info(`MCP ${s.name} already registered — skipped`); continue; }
+    const r = spawnSync('claude', ['mcp', 'add-json', s.name, s.json, '--scope', 'user'], { encoding: 'utf8', timeout: 60000 });
+    if (r.status === 0) ok(`MCP ${s.name} registered`);
+    else warn(`MCP ${s.name} registration failed: ${(r.stderr || '').trim() || 'unknown error'}`);
+  }
 }
 
 function mergeSettings(existingPath, incomingPath) {
@@ -104,20 +155,22 @@ function mergeSettings(existingPath, incomingPath) {
 function main() {
   console.log(c.bold('\nclaude-code-setup — installing Antonio\'s Claude config\n'));
 
-  // 1. Check jq
-  if (!checkJq()) {
-    warn('jq not found — required by hooks');
-    const ok2 = installJq();
-    if (!ok2) process.exit(1);
-  } else {
-    ok('jq present');
-  }
+  // 1. Dependencies
+  //    jq is required (hooks parse JSON with it). python3 powers the
+  //    transcript-search MCP server; ffmpeg powers claude-video-vision —
+  //    both best-effort (feature stays dormant if absent).
+  console.log(c.bold('Dependencies:'));
+  if (!brewInstall('jq', { required: true })) process.exit(1);
+  brewInstall('python3');
+  brewInstall('ffmpeg');
 
   // 2. Ensure dirs
   ensureDir(CLAUDE_DIR);
   ensureDir(path.join(CLAUDE_DIR, 'hooks'));
   ensureDir(path.join(CLAUDE_DIR, 'skills'));
+  ensureDir(path.join(CLAUDE_DIR, 'skills', 'caveman'));
   ensureDir(path.join(CLAUDE_DIR, 'commands'));
+  ensureDir(path.join(CLAUDE_DIR, 'transcript-search'));
 
   // 3. Hooks
   const hooks = ['caveman-activate.sh', 'check-dep.sh', 'eslint-fix.sh', 'notify-sound.sh', 'scan-secrets.sh', 'stop-verify.sh'];
@@ -127,15 +180,20 @@ function main() {
     makeExecutable(dest);
   }
 
-  // 4. Skills
+  // 4. Skills (mute/unmute + the caveman /caveman skill with intensity levels)
   for (const s of ['mute.md', 'unmute.md']) {
     copyFile(path.join(FILES_DIR, 'skills', s), path.join(CLAUDE_DIR, 'skills', s), { skipIfExists: true });
   }
+  copyFile(path.join(FILES_DIR, 'skills', 'caveman', 'SKILL.md'), path.join(CLAUDE_DIR, 'skills', 'caveman', 'SKILL.md'), { skipIfExists: true });
 
   // 4b. Commands (slash commands referenced by CLAUDE.md)
   for (const cmd of ['check-dep.md', 'debug.md', 'scan-secrets.md']) {
     copyFile(path.join(FILES_DIR, 'commands', cmd), path.join(CLAUDE_DIR, 'commands', cmd), { skipIfExists: true });
   }
+
+  // 4c. transcript-search engine (the MCP server script — index.db is built
+  //     per-user from their own ~/.claude/projects and is never shipped)
+  copyFile(path.join(FILES_DIR, 'transcript-search', 'rag_lite.py'), path.join(CLAUDE_DIR, 'transcript-search', 'rag_lite.py'));
 
   // 5. Statusline
   const statuslineDest = path.join(CLAUDE_DIR, 'statusline.sh');
@@ -168,7 +226,14 @@ function main() {
     copyFile(path.join(FILES_DIR, 'settings.json'), settingsDest);
   }
 
-  console.log(c.bold(c.green('\nDone. Restart Claude Code to apply.\n')));
+  // 8. MCP servers (transcript-search + claude-video-vision)
+  console.log(c.bold('\nMCP servers:'));
+  registerMcpServers();
+
+  console.log(c.bold(c.green('\nDone. Restart Claude Code to apply.')));
+  console.log(c.dim('Two one-time steps on a new machine (identity, not config — they can\'t ship):'));
+  console.log(c.dim('  1. Log into Claude Code.'));
+  console.log(c.dim('  2. For video analysis, give claude-video-vision your own API key.\n'));
 }
 
 main();
