@@ -41,6 +41,7 @@ The installer installs these for you if missing:
 | `jq` | hooks (JSON parsing) | **Required** — install aborts without it. |
 | `python3` | `transcript-search` MCP + video-FPS hook | Best-effort — feature stays dormant if it can't install. |
 | `ffmpeg` | `claude-video-vision` MCP | Best-effort. |
+| `tmux` | optional `cr` tmux launch workflow (lives in shell config, not shipped) | Best-effort. |
 | `git`, `eslint`, `tsc` | commit-scan / lint / typecheck hooks | Optional — hooks no-op cleanly when absent. |
 
 ## What it installs (into `~/.claude/`)
@@ -84,6 +85,33 @@ The installer reproduces **100% of the configuration and behaviour**. Two things
 
 1. **Log into Claude Code** (your account — you'd do this on any new machine anyway).
 2. **Give `claude-video-vision` your own API key** if you use video analysis.
+
+## Shell workflow (optional, not shipped)
+
+The package mirrors `~/.claude` only, so anything in your shell config (`~/.zshrc`) is **not** shipped. Add it per machine. These two bits drive how I launch Claude:
+
+**Start Claude in bypass mode** (skips per-tool permission prompts). Note: `skipDangerousModePermissionPrompt` in `settings.json` only suppresses the warning; this alias is what actually starts a session in bypass mode:
+
+```sh
+alias claude="claude --dangerously-skip-permissions"
+```
+
+**`cr` — launch Claude inside a tmux session** (named after the current directory, or pass a name: `cr myname`):
+
+```sh
+cr() {
+  local session="${1:-$(basename "$PWD")}"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    tmux attach-session -t "$session"
+  else
+    tmux new-session -s "$session" -d -c "$PWD"
+    tmux send-keys -t "$session" "claude --dangerously-skip-permissions --remote-control '$session'" Enter
+    tmux attach-session -t "$session"
+  fi
+}
+```
+
+`cr` needs `tmux`, which the installer now installs best effort (see the dependencies table). After editing `~/.zshrc`, run `source ~/.zshrc` or open a new terminal.
 
 ## Maintaining (for me)
 

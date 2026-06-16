@@ -153,6 +153,7 @@ function main() {
     if (!brewInstall('jq', { required: true })) process.exit(1);
     brewInstall('python3');
     brewInstall('ffmpeg');
+    brewInstall('tmux');
   }
 
   // 2. Mirror every shipped config file into ~/.claude at the same relative
