@@ -1,6 +1,6 @@
 {
   "name": "@antonior/claude-code-setup",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Install Antonio's full Claude Code setup: hooks, slash commands, skills, statusline, settings, and MCP servers (transcript-search + video-vision)",
   "bin": {
     "claude-code-setup": "bin/install.js"

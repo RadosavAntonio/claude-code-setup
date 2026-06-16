@@ -24,7 +24,7 @@ The allowlist in `scripts/sync-from-local.sh` already encodes this. Do NOT widen
 2. **Clone fresh** into a temp dir: `gh repo clone RadosavAntonio/claude-code-setup <tmp>` (or `git pull` if already cloned). Work there.
 3. **Sync.** Run `bash scripts/sync-from-local.sh`. It rebuilds `files/` as an exact mirror of my current allowlisted config.
 4. **No-op guard.** `git add -A`, then `git diff --cached --quiet`. If it reports no changes, STOP and tell me "already in sync, nothing to publish." Do not bump or publish.
-5. **Secret gate.** Run `/scan-secrets` over the staged files. If it flags anything, STOP and show me — do not publish.
+5. **Secret gate.** From the clone, run `bash scripts/scan-staged.sh`. It scans the staged diff for token signatures (AWS, GitHub, Slack, OpenAI, PEM keys, JWTs, generic `key/secret/token=...`) and exits non-zero if it finds any. Do NOT rely on `/scan-secrets` here — the shell cwd may not be this repo, so a skill that scans the current dir would falsely report clean. If the script exits non-zero, STOP and show me — do not publish.
 6. **Bump.** `npm version patch --no-git-tag-version`.
 7. **Commit + push.** Commit with a normal-English message summarising the diff (end with the `Co-Authored-By: Claude ...` line), push to `main`.
 8. **Publish.** `npm publish --access public`.
