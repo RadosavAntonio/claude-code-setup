@@ -49,5 +49,6 @@ Applies to all projects. The current user and any project CLAUDE.md override thi
 - Run `/compact` proactively when context hits 60%. Don't wait to be asked.
 
 ## Misc
-- British English in prose (behaviour, colour, licence) — HL is UK.
+- British English in prose (behaviour, colour, licence). HL is UK.
+- No em dashes (—), en dashes (–), or hyphens between words in prose. This includes compound modifiers: write "host owned", "one way", "over the air", "self hosted", "real time", never hyphenated. Use full stops, commas, colons, parentheses, or just separate words. The ONLY hyphens allowed are inside a literal code identifier, file path, package name (e.g. react-navigation, core/ui-components), CSS property, HTML attribute, or version string. Never invent one in plain English.
 - Skills to use proactively: `/scan-secrets` (auto before commits), `/check-dep` (before adding deps), `/debug` (when stuck).

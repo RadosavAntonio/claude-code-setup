@@ -170,6 +170,7 @@ function main() {
   ensureDir(path.join(CLAUDE_DIR, 'skills'));
   ensureDir(path.join(CLAUDE_DIR, 'skills', 'caveman'));
   ensureDir(path.join(CLAUDE_DIR, 'commands'));
+  ensureDir(path.join(CLAUDE_DIR, 'agents'));
   ensureDir(path.join(CLAUDE_DIR, 'transcript-search'));
 
   // 3. Hooks
@@ -194,6 +195,12 @@ function main() {
   // 4c. transcript-search engine (the MCP server script — index.db is built
   //     per-user from their own ~/.claude/projects and is never shipped)
   copyFile(path.join(FILES_DIR, 'transcript-search', 'rag_lite.py'), path.join(CLAUDE_DIR, 'transcript-search', 'rag_lite.py'));
+
+  // 4d. Agents (custom subagent definitions: Explore, Plan, statusline-setup).
+  //     Overwritten on re-run so updates propagate, same as hooks/statusline.
+  for (const a of ['Explore.md', 'Plan.md', 'statusline-setup.md']) {
+    copyFile(path.join(FILES_DIR, 'agents', a), path.join(CLAUDE_DIR, 'agents', a));
+  }
 
   // 5. Statusline
   const statuslineDest = path.join(CLAUDE_DIR, 'statusline.sh');

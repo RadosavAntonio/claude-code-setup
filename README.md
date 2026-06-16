@@ -56,6 +56,7 @@ The installer installs these for you if missing:
   - `notify-sound.sh` — sound on notification/stop
 - **`commands/`** — `/check-dep`, `/debug`, `/scan-secrets` slash commands
 - **`skills/`** — `/mute`, `/unmute`, and `/caveman` (with intensity levels)
+- **`agents/`** — custom subagents: `Explore` (fast read-only code search), `Plan` (architect/implementation plans), `statusline-setup` (statusline config)
 - **`statusline.sh`** — git, model, context %, rate-limit statusline
 - **`transcript-search/rag_lite.py`** — the transcript-search MCP engine
 - **MCP servers** (registered via `claude mcp add-json`, user scope) — see below
@@ -83,10 +84,6 @@ The installer reproduces **100% of the configuration and behaviour**. Two things
 
 1. **Log into Claude Code** (your account — you'd do this on any new machine anyway).
 2. **Give `claude-video-vision` your own API key** if you use video analysis.
-
-## Intentionally not shipped
-
-- `skipDangerousModePermissionPrompt` — this disables a safety confirmation. I won't flip that on your machine by default; enable it yourself if you want it.
 
 ## License
 
