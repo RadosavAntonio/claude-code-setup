@@ -101,6 +101,7 @@ alias claude="claude --dangerously-skip-permissions"
 ```sh
 cr() {
   local session="${1:-$(basename "$PWD")}"
+  session="${session//[.:]/_}"   # tmux treats . and : as target separators
   if tmux has-session -t "$session" 2>/dev/null; then
     tmux attach-session -t "$session"
   else

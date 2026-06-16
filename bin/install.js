@@ -172,9 +172,37 @@ function main() {
   console.log(c.bold(c.green('\nDone. Restart Claude Code to apply.')));
   console.log(c.dim('Overwrites are backed up to <file>.bak. Unmanaged files already in ~/.claude are left untouched.'));
   if (!CONFIG_ONLY) {
-    console.log(c.dim('Two one-time steps on a new machine (identity, not config — they can\'t ship):'));
-    console.log(c.dim('  1. Log into Claude Code.'));
-    console.log(c.dim('  2. For video analysis, give claude-video-vision your own API key.\n'));
+    const bar = c.yellow('━'.repeat(64));
+    console.log(`
+${bar}
+${c.bold(c.yellow('  MANUAL STEPS: do these once on each machine'))}
+${c.dim('  (a package can only write ~/.claude; your shell config and your')}
+${c.dim('  account cannot ship, so set them up yourself)')}
+${bar}
+
+${c.bold('1) Shell setup')} — add to ${c.bold('~/.zshrc')}, then run: ${c.bold('source ~/.zshrc')}
+
+   ${c.dim('# start Claude in bypass mode (skips permission prompts)')}
+   alias claude="claude --dangerously-skip-permissions"
+
+   ${c.dim('# cr: open Claude in a tmux session named after the current dir')}
+   cr() {
+     local session="\${1:-$(basename "$PWD")}"
+     session="\${session//[.:]/_}"   # tmux treats . and : as separators
+     if tmux has-session -t "$session" 2>/dev/null; then
+       tmux attach-session -t "$session"
+     else
+       tmux new-session -s "$session" -d -c "$PWD"
+       tmux send-keys -t "$session" "claude --dangerously-skip-permissions --remote-control '$session'" Enter
+       tmux attach-session -t "$session"
+     fi
+   }
+
+${c.bold('2) Log into Claude Code')} (your account).
+${c.bold('3) claude-video-vision API key')}: add your own if you use video analysis.
+
+${bar}
+`);
   }
 }
 
