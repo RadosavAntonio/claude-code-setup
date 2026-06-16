@@ -18,7 +18,7 @@ Stock Claude Code is powerful but neutral. This config turns it into a careful, 
 - **💸 Cheap on tokens.** Caveman mode keeps full technical accuracy while cutting chatter ~75%; video defaults to audio-only transcription; verification hooks touch only changed files, not the whole repo. See [Optimised for low token usage](#optimised-for-low-token-usage).
 - **🎬 Understands video.** The `claude-video-vision` MCP lets Claude watch and reason about video, not just text.
 - **📊 Knows where you stand.** A rich statusline shows git branch + dirty state, model and effort level, context-window %, and your 5-hour / 7-day rate-limit usage at a glance.
-- **⚡ Zero-friction, safe install.** One command installs everything, auto-installs its dependencies, registers the MCP servers, and **smart-merges** into any existing config (it never clobbers your `settings.json` or `CLAUDE.md`). Idempotent — re-run any time to pull updates.
+- **⚡ One-command, exact mirror.** Installs everything, auto-installs its dependencies, and registers the MCP servers. It reproduces my config **1:1** — existing files are overwritten so you get an identical setup, with any file it replaces backed up to `<file>.bak` first. It never deletes files it doesn't manage. Idempotent — re-run any time to pull the latest.
 
 ## Install
 
@@ -45,8 +45,8 @@ The installer installs these for you if missing:
 
 ## What it installs (into `~/.claude/`)
 
-- **`CLAUDE.md`** — global rules (trust/integrity, scope discipline, verification). *Skipped if you already have one — merge manually.*
-- **`settings.json`** — permissions, hooks, model/effort/theme. *Smart-merged with any existing file; never overwritten.*
+- **`CLAUDE.md`** — global rules (trust/integrity, scope discipline, verification). *Overwritten to match; any existing one is saved to `CLAUDE.md.bak`.*
+- **`settings.json`** + **`settings.local.json`** — permissions, hooks, effort/theme. *Overwritten to match; any existing ones are saved to `.bak`.*
 - **`hooks/`**
   - `caveman-activate.sh` — terse response style on session start
   - `scan-secrets.sh` — blocks `git commit` if staged diff contains secrets/`.env`
@@ -54,7 +54,7 @@ The installer installs these for you if missing:
   - `eslint-fix.sh` — auto `eslint --fix` on edited JS/TS files
   - `stop-verify.sh` — lint + typecheck changed files when a turn ends
   - `notify-sound.sh` — sound on notification/stop
-- **`commands/`** — `/check-dep`, `/debug`, `/scan-secrets` slash commands
+- **`commands/`** — `/check-dep`, `/debug`, `/scan-secrets`, `/updateClaudeNpm` slash commands
 - **`skills/`** — `/mute`, `/unmute`, and `/caveman` (with intensity levels)
 - **`agents/`** — custom subagents: `Explore` (fast read-only code search), `Plan` (architect/implementation plans), `statusline-setup` (statusline config)
 - **`statusline.sh`** — git, model, context %, rate-limit statusline
@@ -84,6 +84,13 @@ The installer reproduces **100% of the configuration and behaviour**. Two things
 
 1. **Log into Claude Code** (your account — you'd do this on any new machine anyway).
 2. **Give `claude-video-vision` your own API key** if you use video analysis.
+
+## Maintaining (for me)
+
+The package is an exact mirror of my own `~/.claude`. To refresh it from my live config and publish:
+
+- `scripts/sync-from-local.sh` rebuilds `files/` from an allowlist of my config (`CLAUDE.md`, `settings*.json`, `statusline.sh`, `hooks/`, `commands/`, `agents/`, `skills/`, the caveman skill, the transcript-search engine). It never copies private or runtime data (history, transcripts, memory, the search index, sessions, caches, marketplace clones).
+- The `/updateClaudeNpm` slash command runs that sync, scans for secrets, bumps the version, pushes to `main`, and publishes to npm — so a fresh `npx @antonior/claude-code-setup` on another machine reproduces my setup 1:1.
 
 ## License
 
