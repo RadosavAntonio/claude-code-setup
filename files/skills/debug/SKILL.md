@@ -1,3 +1,8 @@
+---
+name: debug
+description: Systematic root cause debugging. Use when stuck on a bug, an error recurs after a fix attempt, or about to guess or try a random change instead of tracing the cause. Never guess, diagnose.
+---
+
 Systematic debugging. Never guess — diagnose. Follow these steps in order; do not jump to a fix before the root cause is understood.
 
 ## Steps

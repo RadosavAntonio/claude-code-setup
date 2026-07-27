@@ -55,8 +55,8 @@ The installer installs these for you if missing:
   - `eslint-fix.sh` — auto `eslint --fix` on edited JS/TS files
   - `stop-verify.sh` — lint + typecheck changed files when a turn ends
   - `notify-sound.sh` — sound on notification/stop
-- **`commands/`** — `/check-dep`, `/debug`, `/scan-secrets`, `/updateClaudeNpm` slash commands
-- **`skills/`** — `/mute`, `/unmute`, and `/caveman` (with intensity levels)
+- **`commands/`** — `/check-dep`, `/scan-secrets`, `/updateClaudeNpm` slash commands
+- **`skills/`** — `/mute`, `/unmute`, `/debug` (auto-invokes on recurring errors or guess-and-check, not just when typed), and `/caveman` (with intensity levels)
 - **`agents/`** — custom subagents: `Explore` (fast read-only code search), `Plan` (architect/implementation plans), `statusline-setup` (statusline config)
 - **`statusline.sh`** — git, model, context %, rate-limit statusline
 - **`transcript-search/rag_lite.py`** — the transcript-search MCP engine
