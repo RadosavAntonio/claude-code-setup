@@ -48,9 +48,17 @@ copydir hooks    hooks
 copydir commands commands
 copydir agents   agents
 
-# Skills: top-level *.md (e.g. mute, unmute)
+# Skills: proper <name>/SKILL.md dirs (e.g. mute, unmute)
 mkdir -p "$FILES/skills"
 shopt -s nullglob
+for d in "$CLAUDE"/skills/*/; do
+  name="$(basename "$d")"
+  [ -f "$d/SKILL.md" ] || continue
+  mkdir -p "$FILES/skills/$name"
+  cp "$d/SKILL.md" "$FILES/skills/$name/SKILL.md"
+  echo "✓ skills/$name/SKILL.md"
+done
+# Legacy top-level *.md skills, if any remain
 for f in "$CLAUDE"/skills/*.md; do
   cp "$f" "$FILES/skills/"
   echo "✓ skills/$(basename "$f")"

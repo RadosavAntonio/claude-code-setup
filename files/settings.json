@@ -18,14 +18,7 @@
       "Bash(git stash list:*)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(wc:*)",
-      "Bash(grep:*)",
       "Bash(rg:*)",
-      "Bash(find:*)",
       "Bash(which:*)",
       "Bash(file:*)",
       "Bash(jq:*)",
@@ -121,7 +114,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"\nimport json, sys, re\ndata = json.load(sys.stdin)\nmsg = data.get('message', '')\nis_video = (bool(re.search(r'(?i)(analys[ei]|watch|summariz|process|review|transcript)', msg)) and bool(re.search(r'(?i)(\\\\.(mp4|mov|avi|mkv|webm)|youtube\\\\.com|youtu\\\\.be|video)', msg))) or bool(re.search(r'https?://(www\\\\.)?(youtube\\\\.com/watch|youtu\\\\.be/)', msg))\nhas_fps = bool(re.search(r'(?i)(\\\\bfps\\\\b|\\\\d+\\\\s*fps|frame.{0,2}rate|frames.{0,3}per.{0,3}second)', msg))\nif is_video and not has_fps:\n    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': 'REMINDER: User wants to analyse a video but has NOT specified FPS. Before calling any video tools, ask them: How many FPS would you like to use? (default: auto)'}}))\n\"",
+            "command": "python3 -c \"\nimport json, sys, re\ndata = json.load(sys.stdin)\nmsg = data.get('user_prompt', '')\nis_video = (bool(re.search(r'(?i)(analys[ei]|watch|summariz|process|review|transcript)', msg)) and bool(re.search(r'(?i)(\\\\.(mp4|mov|avi|mkv|webm)|youtube\\\\.com|youtu\\\\.be|video)', msg))) or bool(re.search(r'https?://(www\\\\.)?(youtube\\\\.com/watch|youtu\\\\.be/)', msg))\nhas_fps = bool(re.search(r'(?i)(\\\\bfps\\\\b|\\\\d+\\\\s*fps|frame.{0,2}rate|frames.{0,3}per.{0,3}second)', msg))\nif is_video and not has_fps:\n    print(json.dumps({'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': 'REMINDER: User wants to analyse a video but has NOT specified FPS. Before calling any video tools, ask them: How many FPS would you like to use? (default: auto)'}}))\n\"",
             "timeout": 5
           }
         ]
@@ -152,7 +145,11 @@
     "type": "command",
     "command": "~/.claude/statusline.sh"
   },
-  "effortLevel": "xhigh",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "effortLevel": "medium",
   "advisorModel": "opus",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
