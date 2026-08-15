@@ -114,12 +114,13 @@ cr() {
 
 `cr` needs `tmux`, which the installer now installs best effort (see the dependencies table). After editing `~/.zshrc`, run `source ~/.zshrc` or open a new terminal.
 
-## Local/alternate model routing: `claude-lm` and `claude-or` (optional, not shipped)
+## Local/alternate model routing: `claude-lm`, `claude-or`, `claude-google` (optional, not shipped)
 
-Not part of the installer — no secrets, keys, or router config are shipped; this needs a live local credential store per machine. Two extra launchers, alongside plain `claude`:
+Not part of the installer — no secrets, keys, or router config are shipped; this needs a live local credential store per machine. Three extra launchers, alongside plain `claude`:
 
 - **`claude-lm`** — routes through [LM Studio](https://lmstudio.ai) (local models, free, runs on your own hardware).
-- **`claude-or`** — routes through [OpenRouter](https://openrouter.ai) (hosted models, incl. free tiers).
+- **`claude-or`** — routes through [OpenRouter](https://openrouter.ai) (hosted models, incl. free tiers, but capped at 50 free-model requests/day on a free OpenRouter account — resets daily, or add credits for 1000/day).
+- **`claude-google`** — routes through [Google AI Studio](https://aistudio.google.com) direct (Gemini), bypassing OpenRouter's shared free pool entirely — your own per-key quota instead.
 
 Both go through [Claude Code Router](https://www.npmjs.com/package/@musistudio/claude-code-router) (CCR), a local proxy that lets Claude Code talk to non-Anthropic backends. **Plain `claude` is never touched by any of this** — different launcher script, different Claude Code config directory, zero shared state.
 
@@ -179,9 +180,37 @@ fi
 exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-openrouter --dangerously-skip-permissions "$@"
 ```
 
-### 4. Keep each launcher's default model separate
+### 4. `claude-google` — Google AI Studio (Gemini) direct
 
-`claude-lm` and `claude-or` need their **own** Claude Code config directory each — CCR's wrapper scripts pin a config dir via `CLAUDE_CONFIG_DIR`, and if two launchers point at the same one, picking a model in either overwrites the other's default too (they share one `settings.json`). Duplicate the CCR-generated wrapper per launcher, changing only that path, e.g.:
+No CCR slash bug here — Gemini model ids (`gemini-3.7-flash`, etc.) have no `/`. Still uses the same small local shim pattern, purely to keep the real key out of CCR's own config: CCR talks to `google-shim.cjs`, which forwards to Google's OpenAI-compatible endpoint (`generativelanguage.googleapis.com/v1beta/openai/...`) with your real key.
+
+| File | Contents | Perms |
+|---|---|---|
+| `~/.claude-code-router/google.key` | your Google AI Studio API key, nothing else | `chmod 600` |
+| `~/.claude-code-router/google.model` | the model id to use by default, e.g. `gemini-3.7-flash` | `chmod 600` |
+
+**To set your key:** `echo -n "AQ...." > ~/.claude-code-router/google.key && chmod 600 ~/.claude-code-router/google.key` — get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+
+**To change the default model:** `echo -n "gemini-x.y-flash" > ~/.claude-code-router/google.model` — takes effect on the next request, no restart needed. List what your key can actually use with `curl "https://generativelanguage.googleapis.com/v1beta/models?key=$(cat ~/.claude-code-router/google.key)"` — older model ids get deprecated over time and 404 for new keys.
+
+```sh
+#!/bin/sh
+# ~/bin/claude-google
+if [ ! -s ~/.claude-code-router/google.key ]; then
+  echo "No Google API key set. Put it in ~/.claude-code-router/google.key (chmod 600) first." >&2
+  exit 1
+fi
+if ! curl -s -o /dev/null -m 2 http://127.0.0.1:3492/health 2>/dev/null; then
+  nohup node ~/.claude-code-router/google-shim.cjs >> ~/.claude-code-router/google-shim.log 2>&1 &
+  disown
+  sleep 1
+fi
+exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-google --dangerously-skip-permissions "$@"
+```
+
+### 5. Keep each launcher's default model separate
+
+`claude-lm`, `claude-or`, and `claude-google` each need their **own** Claude Code config directory — CCR's wrapper scripts pin a config dir via `CLAUDE_CONFIG_DIR`, and if two launchers point at the same one, picking a model in either overwrites the other's default too (they share one `settings.json`). Duplicate the CCR-generated wrapper per launcher, changing only that path, e.g.:
 
 ```sh
 sed 's|profiles/default-claude-code/claude|profiles/openrouter-claude-code/claude|' \
@@ -189,9 +218,11 @@ sed 's|profiles/default-claude-code/claude|profiles/openrouter-claude-code/claud
   > ~/.claude-code-router/bin/ccr-claude-code-wrapper-openrouter
 ```
 
-Each config dir's `settings.json` can then pin its own default `"model"` — CCR's gateway-discovery model ids are `anthropic/claude-ccr-h<hex-of-"ProviderName/modelId">` (plain hex, no salt), so e.g. `"LM Studio/local"` and `"OpenRouter/or-default"` encode deterministically and can be set directly without picking via `/model` first.
+Each config dir's `settings.json` can then pin its own default `"model"` — CCR's gateway-discovery model ids are `anthropic/claude-ccr-h<hex-of-"ProviderName/modelId">` (plain hex, no salt), so e.g. `"LM Studio/local"`, `"OpenRouter/or-default"`, and `"Google/gm-default"` encode deterministically and can be set directly without picking via `/model` first.
 
-**Bypass permissions** (`--dangerously-skip-permissions`, same as the `claude` alias below) is baked directly into both launcher scripts above, since shell aliases don't apply inside another script's `exec`.
+**Bypass permissions** (`--dangerously-skip-permissions`, same as the `claude` alias below) is baked directly into all three launcher scripts above, since shell aliases don't apply inside another script's `exec`.
+
+Plain `claude` is always 100% Anthropic, unaffected by any of this.
 
 ## Maintaining (for me)
 
