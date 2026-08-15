@@ -114,29 +114,84 @@ cr() {
 
 `cr` needs `tmux`, which the installer now installs best effort (see the dependencies table). After editing `~/.zshrc`, run `source ~/.zshrc` or open a new terminal.
 
-## Local LLM routing via LM Studio (optional, not shipped)
+## Local/alternate model routing: `claude-lm` and `claude-or` (optional, not shipped)
 
-Not part of the installer — no secrets or router config are shipped, since this needs a live local credential store. Steps to reproduce it yourself:
+Not part of the installer — no secrets, keys, or router config are shipped; this needs a live local credential store per machine. Two extra launchers, alongside plain `claude`:
 
-1. **Install [LM Studio](https://lmstudio.ai)**, download a model, then start its local server:
-   ```sh
-   lms server start   # serves an OpenAI-compatible API on :1234
-   ```
-2. **Install [Claude Code Router](https://www.npmjs.com/package/@musistudio/claude-code-router)** (CCR) — a local proxy that lets Claude Code talk to non-Anthropic model backends:
-   ```sh
-   npm install -g @musistudio/claude-code-router
-   ccr serve --no-open
-   ```
-3. **Add LM Studio as a CCR provider** and pick it as the active provider via CCR's own web UI (printed in its startup log, e.g. `http://127.0.0.1:3458/?ccr_web_token=...`). CCR strips the caller's own auth header on every proxied request and substitutes its own credential, so plain OAuth passthrough of your Claude subscription doesn't work automatically — sign in once through CCR's own "Browser session account login" so it holds a working Anthropic credential too, letting you switch between LM Studio and Anthropic from CCR's picker.
-4. **Add a separate launcher** so your normal `claude` command stays untouched (no risk to your everyday Anthropic login):
-   ```sh
-   #!/bin/sh
-   # ~/bin/claude-lm — Claude Code routed through CCR (LM Studio + gateway)
-   exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-default-claude-code "$@"
-   ```
-   (CCR generates that wrapper script itself once a profile is set up in its UI; the launcher just calls it. Make sure `~/bin` is on `PATH`.)
+- **`claude-lm`** — routes through [LM Studio](https://lmstudio.ai) (local models, free, runs on your own hardware).
+- **`claude-or`** — routes through [OpenRouter](https://openrouter.ai) (hosted models, incl. free tiers).
 
-Plain `claude` is always 100% Anthropic, unaffected. `claude-lm` is the only command that talks to CCR/LM Studio.
+Both go through [Claude Code Router](https://www.npmjs.com/package/@musistudio/claude-code-router) (CCR), a local proxy that lets Claude Code talk to non-Anthropic backends. **Plain `claude` is never touched by any of this** — different launcher script, different Claude Code config directory, zero shared state.
+
+### 1. Install and start CCR + LM Studio
+
+```sh
+npm install -g @musistudio/claude-code-router
+ccr serve --no-open          # starts the router on :3456
+
+# LM Studio: download a model in the app, then:
+lms server start              # serves LM Studio on :1234
+```
+
+Add LM Studio as a provider via CCR's own web UI (URL + token printed in its startup log, e.g. `http://127.0.0.1:3458/?ccr_web_token=...`). CCR strips the caller's own auth header on every proxied request and substitutes its own credential, so plain OAuth passthrough of a Claude subscription doesn't work automatically through it — sign in once through CCR's own "Browser session account login" if you also want Anthropic models reachable from inside these launchers.
+
+**Known CCR bug:** any model id containing a literal `/` (e.g. `google/gemma-4-12b`, or basically every OpenRouter model) breaks CCR's own routing with `"Model selector conflicts with x-target-provider"` — confirmed by direct testing, not a config mistake. Workarounds below route around it.
+
+### 2. `claude-lm` — LM Studio
+
+CCR's LM Studio provider is configured with a single generic model alias (`"local"`, no slash) rather than real per-model names — LM Studio ignores the requested model string as long as *something* is loaded, so this one alias always routes to whatever you currently have loaded in LM Studio's own UI, regardless of which model that is.
+
+```sh
+#!/bin/sh
+# ~/bin/claude-lm
+exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-default-claude-code --dangerously-skip-permissions "$@"
+```
+
+**LM Studio's context length matters.** Claude Code's own system prompt + every registered MCP tool schema is large (tens of KB — expect 25k+ tokens with a few MCP servers registered). If the model you load in LM Studio has too little context (its RAM guardrail may silently cap it below what you asked for), you'll get `"tokens to keep from the initial prompt is greater than the context length"`. Fix in LM Studio's own UI: manually choose load parameters and raise context length until it fits, watching for its resource-guardrail warning as the real ceiling for your hardware.
+
+### 3. `claude-or` — OpenRouter
+
+Because of the CCR slash bug above, OpenRouter needs a small local shim between CCR and the real API: CCR talks to the shim using a slash-free placeholder model name, the shim rewrites it to the real OpenRouter model id and forwards on with your real key — which never enters CCR's own config.
+
+**`~/.claude-code-router/openrouter-shim.cjs`** (~70 lines, plain Node, no deps) reads two tiny local files on every request:
+
+| File | Contents | Perms |
+|---|---|---|
+| `~/.claude-code-router/openrouter.key` | your OpenRouter API key, nothing else | `chmod 600` |
+| `~/.claude-code-router/openrouter.model` | the model id to use by default, e.g. `poolside/laguna-s-2.1:free` | `chmod 600` |
+
+**To set your key:** `echo -n "sk-or-v1-..." > ~/.claude-code-router/openrouter.key && chmod 600 ~/.claude-code-router/openrouter.key`
+
+**To change the default model:** `echo -n "vendor/model-id:free" > ~/.claude-code-router/openrouter.model` — takes effect on the next request, no restart needed. Browse free models at [openrouter.ai/models?max_price=0](https://openrouter.ai/models?max_price=0). Free-tier models sit on OpenRouter's shared rate-limit pool and 429 intermittently under load — that's normal, not a bug; Claude Code retries automatically, or add your own provider key at [openrouter.ai/settings/integrations](https://openrouter.ai/settings/integrations) to get a dedicated quota.
+
+```sh
+#!/bin/sh
+# ~/bin/claude-or
+if [ ! -s ~/.claude-code-router/openrouter.key ]; then
+  echo "No OpenRouter API key set. Put it in ~/.claude-code-router/openrouter.key (chmod 600) first." >&2
+  exit 1
+fi
+if ! curl -s -o /dev/null -m 2 http://127.0.0.1:3491/health 2>/dev/null; then
+  nohup node ~/.claude-code-router/openrouter-shim.cjs >> ~/.claude-code-router/openrouter-shim.log 2>&1 &
+  disown
+  sleep 1
+fi
+exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-openrouter --dangerously-skip-permissions "$@"
+```
+
+### 4. Keep each launcher's default model separate
+
+`claude-lm` and `claude-or` need their **own** Claude Code config directory each — CCR's wrapper scripts pin a config dir via `CLAUDE_CONFIG_DIR`, and if two launchers point at the same one, picking a model in either overwrites the other's default too (they share one `settings.json`). Duplicate the CCR-generated wrapper per launcher, changing only that path, e.g.:
+
+```sh
+sed 's|profiles/default-claude-code/claude|profiles/openrouter-claude-code/claude|' \
+  ~/.claude-code-router/bin/ccr-claude-code-wrapper-default-claude-code \
+  > ~/.claude-code-router/bin/ccr-claude-code-wrapper-openrouter
+```
+
+Each config dir's `settings.json` can then pin its own default `"model"` — CCR's gateway-discovery model ids are `anthropic/claude-ccr-h<hex-of-"ProviderName/modelId">` (plain hex, no salt), so e.g. `"LM Studio/local"` and `"OpenRouter/or-default"` encode deterministically and can be set directly without picking via `/model` first.
+
+**Bypass permissions** (`--dangerously-skip-permissions`, same as the `claude` alias below) is baked directly into both launcher scripts above, since shell aliases don't apply inside another script's `exec`.
 
 ## Maintaining (for me)
 
