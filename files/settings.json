@@ -28,6 +28,7 @@
       "Bash(npm ls:*)"
     ]
   },
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {

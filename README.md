@@ -114,6 +114,30 @@ cr() {
 
 `cr` needs `tmux`, which the installer now installs best effort (see the dependencies table). After editing `~/.zshrc`, run `source ~/.zshrc` or open a new terminal.
 
+## Local LLM routing via LM Studio (optional, not shipped)
+
+Not part of the installer — no secrets or router config are shipped, since this needs a live local credential store. Steps to reproduce it yourself:
+
+1. **Install [LM Studio](https://lmstudio.ai)**, download a model, then start its local server:
+   ```sh
+   lms server start   # serves an OpenAI-compatible API on :1234
+   ```
+2. **Install [Claude Code Router](https://www.npmjs.com/package/@musistudio/claude-code-router)** (CCR) — a local proxy that lets Claude Code talk to non-Anthropic model backends:
+   ```sh
+   npm install -g @musistudio/claude-code-router
+   ccr serve --no-open
+   ```
+3. **Add LM Studio as a CCR provider** and pick it as the active provider via CCR's own web UI (printed in its startup log, e.g. `http://127.0.0.1:3458/?ccr_web_token=...`). CCR strips the caller's own auth header on every proxied request and substitutes its own credential, so plain OAuth passthrough of your Claude subscription doesn't work automatically — sign in once through CCR's own "Browser session account login" so it holds a working Anthropic credential too, letting you switch between LM Studio and Anthropic from CCR's picker.
+4. **Add a separate launcher** so your normal `claude` command stays untouched (no risk to your everyday Anthropic login):
+   ```sh
+   #!/bin/sh
+   # ~/bin/claude-lm — Claude Code routed through CCR (LM Studio + gateway)
+   exec ~/.claude-code-router/bin/ccr-claude-code-wrapper-default-claude-code "$@"
+   ```
+   (CCR generates that wrapper script itself once a profile is set up in its UI; the launcher just calls it. Make sure `~/bin` is on `PATH`.)
+
+Plain `claude` is always 100% Anthropic, unaffected. `claude-lm` is the only command that talks to CCR/LM Studio.
+
 ## Maintaining (for me)
 
 The package is an exact mirror of my own `~/.claude`. To refresh it from my live config and publish:
