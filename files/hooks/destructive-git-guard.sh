@@ -12,27 +12,57 @@ set -uo pipefail
 input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null)
 
+# Strip heredoc bodies before matching, so prose that merely mentions these
+# commands (e.g. a commit message documenting this hook) doesn't false-trigger.
+scan=$(printf '%s' "$cmd" | python3 -c '
+import re, sys
+s = sys.stdin.read()
+out = []
+i = 0
+opener = re.compile(r"<<-?\s*([\"'"'"']?)([A-Za-z_][A-Za-z0-9_]*)\1")
+# Interpreters that EXECUTE heredoc bodies (must still be scanned) vs. commands
+# like `cat`/`git commit -m "$(cat <<EOF ...)"` where the body is inert data.
+interp = re.compile(r"(?:^|[|;&(]\s*|\s)(bash|sh|zsh|python[0-9.]*|node|ruby|perl)\s*$")
+while True:
+    m = opener.search(s, i)
+    if not m:
+        out.append(s[i:])
+        break
+    out.append(s[i:m.end()])
+    closer = re.compile(r"\n" + re.escape(m.group(2)) + r"(?=\n|$)")
+    cm = closer.search(s, m.end())
+    if not cm:
+        out.append(s[m.end():])
+        i = len(s)
+        break
+    if interp.search(s[:m.start()]):
+        out.append(s[m.end():cm.end()])   # executed by an interpreter: keep, do not strip
+    i = cm.end()
+print("".join(out), end="")
+' 2>/dev/null)
+[ -z "$scan" ] && scan="$cmd"   # python3 missing/failed -> fall back to full string (safe, may over-match)
+
 reason=""
-case "$cmd" in
+case "$scan" in
   *"git push"*--force*|*"git push"*" -f"*) reason="force push can overwrite remote history" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"git reset"*--hard*) reason="${reason:+$reason; }git reset --hard discards uncommitted work" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"git clean"*"-f"*|*"git clean"*"--force"*) reason="${reason:+$reason; }git clean -f permanently deletes untracked files" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"git branch"*-D*) reason="${reason:+$reason; }git branch -D force-deletes a branch, can lose commits" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"git checkout --"*|*"git checkout ."*|*"git restore"*) reason="${reason:+$reason; }discards uncommitted changes" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"rm -rf"*|*"rm -fr"*|*"rm -r -f"*|*"rm -f -r"*|*"rm --recursive --force"*|*"rm --force --recursive"*) \
     reason="${reason:+$reason; }rm -rf is irreversible" ;;
 esac
-case "$cmd" in
+case "$scan" in
   *"--no-verify"*|*"--no-gpg-sign"*) reason="${reason:+$reason; }bypasses commit hooks/signing" ;;
 esac
 
