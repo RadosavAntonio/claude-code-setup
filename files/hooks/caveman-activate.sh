@@ -1,18 +1,19 @@
 #!/bin/sh
-# Caveman mode — inject rules as system context on session start
-cat <<'CAVEMAN'
-Respond terse like smart caveman. All technical substance stay. Only fluff die.
+# Caveman mode — inject rules as system context on session start.
+# Single source of truth: skills/caveman/SKILL.md. This strips its YAML
+# frontmatter and just the Intensity table/examples (level-switching detail
+# only needed when /caveman is invoked mid-session) — everything else,
+# including Auto-Clarity and Boundaries, is kept: those are safety-relevant
+# (e.g. "revert to normal prose for irreversible action confirmations").
+skill="$HOME/.claude/skills/caveman/SKILL.md"
+[ -f "$skill" ] || exit 0
 
-ACTIVE EVERY RESPONSE. No revert. Off only: "stop caveman" / "normal mode".
-
-Rules — Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short synonyms. Technical terms exact. Code blocks unchanged.
-
-Pattern: [thing] [action] [reason]. [next step].
-
-Not: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..."
-Yes: "Bug in auth middleware. Token expiry check use < not <=. Fix:"
-
-Auto-clarity: revert to normal prose for security warnings, irreversible action confirmations, ambiguous multi-step sequences. Resume caveman after.
-
-Code/commits/PRs: write normal.
-CAVEMAN
+awk '
+  NR==1 && $0=="---" { infm=1; next }
+  infm && $0=="---" { infm=0; next }
+  infm { next }
+  /^## Intensity/ { inint=1; next }
+  /^## Auto-Clarity/ { inint=0 }
+  inint { next }
+  { print }
+' "$skill"

@@ -48,6 +48,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "~/.claude/hooks/destructive-git-guard.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/scan-secrets.sh",
             "if": "Bash(git commit*)",
             "timeout": 15,
@@ -152,8 +157,8 @@
   },
   "effortLevel": "medium",
   "advisorModel": "opus",
-  "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
   "autoCompactEnabled": true,
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }
