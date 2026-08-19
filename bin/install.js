@@ -110,6 +110,7 @@ function registerMcpServers() {
     info('  After installing Claude Code, register them manually:');
     info(`    claude mcp add-json transcript-search '{"type":"stdio","command":"python3","args":["${path.join(CLAUDE_DIR, 'transcript-search', 'rag_lite.py')}","serve"],"env":{}}' --scope user`);
     info("    claude mcp add claude-video-vision --scope user -- npx claude-video-vision");
+    info("    claude mcp add XcodeBuildMCP --scope user -- npx -y xcodebuildmcp@latest mcp");
     return;
   }
   const existing = spawnSync('bash', ['-lc', 'claude mcp list'], { encoding: 'utf8', timeout: 60000 }).stdout || '';
@@ -129,6 +130,15 @@ function registerMcpServers() {
         type: 'stdio',
         command: 'npx',
         args: ['claude-video-vision'],
+        env: {},
+      }),
+    },
+    {
+      name: 'XcodeBuildMCP',
+      json: JSON.stringify({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', 'xcodebuildmcp@latest', 'mcp'],
         env: {},
       }),
     },
@@ -200,6 +210,10 @@ ${c.bold('1) Shell setup')} — add to ${c.bold('~/.zshrc')}, then run: ${c.bold
 
 ${c.bold('2) Log into Claude Code')} (your account).
 ${c.bold('3) claude-video-vision API key')}: add your own if you use video analysis.
+${c.bold('4) android-mcp-server')} (optional, Android control): not on npm, clone + build it yourself:
+   git clone https://github.com/martingeidobler/android-mcp-server.git ~/mcp-servers/android-mcp-server
+   cd ~/mcp-servers/android-mcp-server && npm install && npm run build
+   claude mcp add --scope user android -- node ~/mcp-servers/android-mcp-server/dist/index.js
 
 ${bar}
 `);

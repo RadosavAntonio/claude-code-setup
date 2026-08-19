@@ -44,6 +44,13 @@ The installer installs these for you if missing:
 | `tmux` | optional `cr` tmux launch workflow (lives in shell config, not shipped) | Best-effort. |
 | `git`, `eslint`, `tsc`, `jest` | commit-scan / lint / typecheck / test hooks | Optional — hooks no-op cleanly when absent. |
 
+Not auto-installed — bring your own if you want these MCPs:
+
+| Tool | For |
+|------|-----|
+| Xcode + command line tools | `XcodeBuildMCP` (iOS/macOS build, sim, debug) |
+| Android SDK + `adb` | `android-mcp-server` (Android emulator/device control) |
+
 ## What it installs (into `~/.claude/`)
 
 - **`CLAUDE.md`** — global rules (trust/integrity, scope discipline, verification). *Overwritten to match; any existing one is saved to `CLAUDE.md.bak`.*
@@ -65,11 +72,22 @@ The installer installs these for you if missing:
 
 ## Bundled MCP servers
 
-Both are installed and auto-registered for you:
+Auto-registered for you on install:
 
 - **`transcript-search`** — full-text search over your *own* past Claude Code transcripts ("we talked about…", "like last time"). Pure-Python, stdlib only. The index is built **locally on your machine** from `~/.claude/projects/` on first run — nothing about your conversations is ever shipped in this package.
 - **`claude-video-vision`** — lets Claude watch/analyse videos (frames via `ffmpeg`). Published as [`claude-video-vision`](https://www.npmjs.com/package/claude-video-vision) on npm; run via `npx`.
   - **Tip:** when it asks how many FPS, answer **0** to use audio transcription only (no frame extraction) — much cheaper on tokens. Bump the FPS only when you actually need on-screen/visual detail.
+- **`XcodeBuildMCP`** — build, test, drive the iOS/macOS Simulator, and LLDB-debug from Claude, without opening Xcode's UI. Published as [`xcodebuildmcp`](https://www.npmjs.com/package/xcodebuildmcp) on npm; run via `npx`. Needs Xcode + command line tools installed.
+
+Manual (not auto-registered — not npm-published, needs a local build):
+
+- **`android-mcp-server`** — controls Android emulators/devices via `adb`: screenshots, tap/swipe/type, logcat, app install/launch. Not on npm; clone and build it yourself, then register:
+  ```sh
+  git clone https://github.com/martingeidobler/android-mcp-server.git ~/mcp-servers/android-mcp-server
+  cd ~/mcp-servers/android-mcp-server && npm install && npm run build
+  claude mcp add --scope user android -- node ~/mcp-servers/android-mcp-server/dist/index.js
+  ```
+  Requires the Android SDK + `adb` on `PATH` (auto-discovered at `~/Library/Android/sdk`, or set `ANDROID_HOME`).
 
 ## Optimised for low token usage
 
@@ -86,6 +104,7 @@ The installer reproduces **100% of the configuration and behaviour**. Two things
 
 1. **Log into Claude Code** (your account — you'd do this on any new machine anyway).
 2. **Give `claude-video-vision` your own API key** if you use video analysis.
+3. **`android-mcp-server`**, if you want Android control: clone + build it once (not npm-published, so the installer can't fetch it for you) — see [Bundled MCP servers](#bundled-mcp-servers).
 
 ## Maintaining (for me)
 
